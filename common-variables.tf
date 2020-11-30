@@ -17,3 +17,10 @@ variable "department_id" {
   description = "Application environment"
   default = "562301"
 }
+
+#Define subscription ID
+variable "sub_id" {
+  type = string
+  description = "Subscription ID"
+  
+}
