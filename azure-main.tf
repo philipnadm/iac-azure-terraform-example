@@ -1,17 +1,17 @@
 #Configure the state location
 terraform {
   backend "azurerm" {
-    resource_group_name   = "philip-tfstate"
-    storage_account_name  = "philstfstate"
-    container_name        = "tfstate"
-    key                   = "terraform.tfstate"
+    resource_group_name  = "philip-tfstate"
+    storage_account_name = "philstfstate"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
   }
 }
 
 #Configure the Azure Provider
 provider "azurerm" {
   subscription_id = var.sub_id
-  version = ">= 2.33"
+  version         = ">= 2.33"
   features {}
 }
 
@@ -41,150 +41,115 @@ resource "azurerm_subnet" "azure-subnet" {
   address_prefixes     = [var.azure_subnet_cidr]
 }
 
+resource "random_string" "fqdn" {
+  length  = 6
+  special = false
+  upper   = false
+  number  = false
+}
+
 #Create a public IP for loadbalancer
 resource "azurerm_public_ip" "azure-lbpip" {
- name                         = "publicIPForLB"
- location                     = azurerm_resource_group.azure-rg.location
- resource_group_name          = azurerm_resource_group.azure-rg.name
- allocation_method            = "Static"
+  name                = "publicIPForLB"
+  location            = azurerm_resource_group.azure-rg.location
+  resource_group_name = azurerm_resource_group.azure-rg.name
+  allocation_method   = "Static"
+  domain_name_label   = random_string.fqdn.result
 }
 
 resource "azurerm_lb" "azure-lb" {
- name                = "loadBalancer"
- location            = azurerm_resource_group.azure-rg.location
- resource_group_name = azurerm_resource_group.azure-rg.name
+  name                = "loadBalancer"
+  location            = azurerm_resource_group.azure-rg.location
+  resource_group_name = azurerm_resource_group.azure-rg.name
 
- frontend_ip_configuration {
-   name                 = "publicIPAddress"
-   public_ip_address_id = azurerm_public_ip.azure-lbpip.id
- }
+  frontend_ip_configuration {
+    name                 = "PublicIPAddress"
+    public_ip_address_id = azurerm_public_ip.azure-lbpip.id
+  }
 }
 
 resource "azurerm_lb_backend_address_pool" "lb-be" {
- resource_group_name = azurerm_resource_group.azure-rg.name
- loadbalancer_id     = azurerm_lb.azure-lb.id
- name                = "BackEndAddressPool"
+  resource_group_name = azurerm_resource_group.azure-rg.name
+  loadbalancer_id     = azurerm_lb.azure-lb.id
+  name                = "BackEndAddressPool"
 }
 
-resource "azurerm_network_interface" "azure-nics" {
- count               = 2
- name                = "acctni${count.index}"
- location            = azurerm_resource_group.azure-rg.location
- resource_group_name = azurerm_resource_group.azure-rg.name
-
- ip_configuration {
-   name                          = "testConfiguration"
-   subnet_id                     = azurerm_subnet.azure-subnet.id
-   private_ip_address_allocation = "dynamic"
- }
+resource "azurerm_lb_probe" "lb-probe" {
+  resource_group_name = azurerm_resource_group.azure-rg.name
+  loadbalancer_id     = azurerm_lb.azure-lb.id
+  name                = "ssh-running-probe"
+  port                = var.application_port
 }
 
-resource "azurerm_managed_disk" "azure-disk" {
- count                = 2
- name                 = "datadisk_existing_${count.index}"
- location             = azurerm_resource_group.azure-rg.location
- resource_group_name  = azurerm_resource_group.azure-rg.name
- storage_account_type = "Standard_LRS"
- create_option        = "Empty"
- disk_size_gb         = "1023"
+resource "azurerm_lb_rule" "lbnatrule" {
+  resource_group_name            = azurerm_resource_group.azure-rg.name
+  loadbalancer_id                = azurerm_lb.azure-lb.id
+  name                           = "http"
+  protocol                       = "TCP"
+  frontend_port                  = var.application_port
+  backend_port                   = var.application_port
+  backend_address_pool_id        = azurerm_lb_backend_address_pool.lb-be.id
+  frontend_ip_configuration_name = "PublicIPAddress"
+  probe_id                       = azurerm_lb_probe.lb-probe.id
 }
 
-resource "azurerm_availability_set" "avset" {
- name                         = "avset"
- location                     = azurerm_resource_group.azure-rg.location
- resource_group_name          = azurerm_resource_group.azure-rg.name
- platform_fault_domain_count  = 2
- platform_update_domain_count = 2
- managed                      = true
-}
+resource "azurerm_virtual_machine_scale_set" "vmss" {
+  name                = "vmscaleset"
+  location            = azurerm_resource_group.azure-rg.location
+  resource_group_name = azurerm_resource_group.azure-rg.name
+  upgrade_policy_mode = "Manual"
 
-resource "azurerm_virtual_machine" "azure-vm" {
- count                 = 2
- name                  = "acctvm${count.index}"
- location              = azurerm_resource_group.azure-rg.location
- availability_set_id   = azurerm_availability_set.avset.id
- resource_group_name   = azurerm_resource_group.azure-rg.name
- network_interface_ids = [element(azurerm_network_interface.azure-nics.*.id, count.index)]
- vm_size               = "Standard_DS1_v2"
+  sku {
+    name     = "Standard_DS1_v2"
+    tier     = "Standard"
+    capacity = 2
+  }
 
- # Uncomment this line to delete the OS disk automatically when deleting the VM
- delete_os_disk_on_termination = true
+  storage_profile_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
 
- # Uncomment this line to delete the data disks automatically when deleting the VM
- delete_data_disks_on_termination = true
+  storage_profile_os_disk {
+    name              = ""
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
+  }
 
- storage_image_reference {
-   publisher = "Canonical"
-   offer     = "UbuntuServer"
-   sku       = "16.04-LTS"
-   version   = "latest"
- }
+  storage_profile_data_disk {
+    lun           = 0
+    caching       = "ReadWrite"
+    create_option = "Empty"
+    disk_size_gb  = 10
+  }
 
-  storage_os_disk {
-   name              = "myosdisk${count.index}"
-   caching           = "ReadWrite"
-   create_option     = "FromImage"
-   managed_disk_type = "Standard_LRS"
- }
+  os_profile {
+    computer_name_prefix = "vmlab"
+    admin_username       = var.linux_admin_user
+    admin_password       = var.linux_admin_password
+    custom_data          = file("files/setup.sh")
+  }
 
- # Optional data disks
-#  storage_data_disk {
-#    name              = "datadisk_new_${count.index}"
-#    managed_disk_type = "Standard_LRS"
-#    create_option     = "Empty"
-#    lun               = 0
-#    disk_size_gb      = "1023"
-#  }
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
 
- storage_data_disk {
-   name            = element(azurerm_managed_disk.azure-disk.*.name, count.index)
-   managed_disk_id = element(azurerm_managed_disk.azure-disk.*.id, count.index)
-   create_option   = "Attach"
-   lun             = 1
-   disk_size_gb    = element(azurerm_managed_disk.azure-disk.*.disk_size_gb, count.index)
- }
+  network_profile {
+    name    = "terraformnetworkprofile"
+    primary = true
 
- os_profile {
-   computer_name  = var.linux_vm_hostname
-   admin_username = var.linux_admin_user
-   admin_password = var.linux_admin_password
- }
- os_profile_linux_config {
-   disable_password_authentication = false
- }
-
-  # It's easy to transfer files or templates using Terraform.
-  provisioner "file" {
-    source      = "files/setup.sh"
-    destination = "/home/${var.linux_admin_user}/setup.sh"
-
-    connection {
-      type     = "ssh"
-      user     = var.linux_admin_user
-      password = var.linux_admin_password
-      host     = azurerm_public_ip.azure-lbpip.ip_address
+    ip_configuration {
+      name                                   = "IPConfiguration"
+      subnet_id                              = azurerm_subnet.azure-subnet.id
+      load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.lb-be.id]
+      primary                                = true
     }
   }
 
- # This shell script starts our Apache server and prepares the demo environment.
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /home/${var.linux_admin_user}/setup.sh",
-      "sudo /home/${var.linux_admin_user}/setup.sh",
-    ]
-
-    connection {
-      type     = "ssh"
-      user     = var.linux_admin_user
-      password = var.linux_admin_password
-      host     = azurerm_public_ip.azure-lbpip.ip_address
-    }
-  }
-
- tags = {
-    environment = var.app_environment,
-    responsible = var.department_id
-  }
+  tags = var.tags
 }
 
 #Create Security Group to access Web Server

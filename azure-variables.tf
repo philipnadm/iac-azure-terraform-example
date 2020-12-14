@@ -32,7 +32,7 @@ variable "linux_admin_user" {
 variable "linux_admin_password" {
   type        = string
   description = "Linux VM Admin Password"
-  
+
 }
 
 # Linux VM Hostname
@@ -63,3 +63,7 @@ variable "ubuntu-linux-18-sku" {
   default     = "18.04-LTS"
 }
 
+variable "application_port" {
+  description = "The port that you want to expose to the external load balancer"
+  default     = 80
+}

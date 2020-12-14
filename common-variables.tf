@@ -1,26 +1,35 @@
 #Define application name
 variable "app_name" {
-  type = string
+  type        = string
   description = "Your unique application name, used as a prefix for all resources"
 
 }
 #Define application environment
 variable "app_environment" {
-  type = string
+  type        = string
   description = "Application environment"
-  default = "test"
+  default     = "test"
 }
 
 #Define the internal department responsible for the application
 variable "department_id" {
-  type = string
+  type        = string
   description = "Application environment"
-  default = "562301"
+  default     = "562301"
 }
 
 #Define subscription ID
 variable "sub_id" {
-  type = string
+  type        = string
   description = "Subscription ID"
-  
+}
+
+variable "tags" {
+  description = "A map of the tags to use for the resources that are deployed"
+  type        = map(string)
+
+  default = {
+    environment = "test"
+    department  = "562301"
+  }
 }
