@@ -130,7 +130,7 @@ resource "azurerm_virtual_machine_scale_set" "vmss" {
     computer_name_prefix = "vmlab"
     admin_username       = var.linux_admin_user
     admin_password       = var.linux_admin_password
-    custom_data          = file("files/setup.sh")
+    custom_data          = file("web.conf")
   }
 
   os_profile_linux_config {
