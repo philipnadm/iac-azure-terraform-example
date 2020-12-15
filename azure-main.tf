@@ -19,6 +19,7 @@ provider "azurerm" {
 resource "azurerm_resource_group" "azure-rg" {
   name     = "${var.app_name}-${var.app_environment}-rg"
   location = var.rg_location
+  tags = var.tags
 }
 
 #Create a virtual network
@@ -27,11 +28,8 @@ resource "azurerm_virtual_network" "azure-vnet" {
   resource_group_name = azurerm_resource_group.azure-rg.name
   location            = var.rg_location
   address_space       = [var.azure_vnet_cidr]
-  tags = {
-    environment = var.app_environment,
-    responsible = var.department_id
+  tags = var.tags
   }
-}
 
 #Create a subnet
 resource "azurerm_subnet" "azure-subnet" {
@@ -55,6 +53,7 @@ resource "azurerm_public_ip" "azure-lbpip" {
   resource_group_name = azurerm_resource_group.azure-rg.name
   allocation_method   = "Static"
   domain_name_label   = random_string.fqdn.result
+  tags = var.tags
 }
 
 resource "azurerm_lb" "azure-lb" {
@@ -66,6 +65,7 @@ resource "azurerm_lb" "azure-lb" {
     name                 = "PublicIPAddress"
     public_ip_address_id = azurerm_public_ip.azure-lbpip.id
   }
+  tags = var.tags
 }
 
 resource "azurerm_lb_backend_address_pool" "lb-be" {
@@ -183,10 +183,7 @@ resource "azurerm_network_security_group" "azure-web-nsg" {
     source_address_prefix      = "Internet"
     destination_address_prefix = "*"
   }
-  tags = {
-    environment = var.app_environment,
-    responsible = var.department_id
-  }
+  tags = var.tags
 }
 
 #Associate the Web NSG with the subnet
