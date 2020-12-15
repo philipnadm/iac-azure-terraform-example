@@ -67,3 +67,8 @@ variable "application_port" {
   description = "The port that you want to expose to the external load balancer"
   default     = 80
 }
+
+variable "sub_id" {
+  description = "The subscription ID you wish to use"
+  type = string
+}
