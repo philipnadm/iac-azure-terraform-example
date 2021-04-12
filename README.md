@@ -2,7 +2,7 @@
  Simple azure terraform example
  
 **Step-by-step introduction here**
-- https://aberner.github.io/iac-azure-terraform-example/
+- https://philipnadm.github.io/iac-azure-terraform-example/
  
  # Quick guide:
 
