@@ -5,7 +5,7 @@ Starting from scratch, in the end of this you will end up with a development env
 
 ### Step 1: Fork this github project
    - More info: [How to fork a repo](https://docs.github.com/en/free-pro-team@latest/github/getting-started-with-github/fork-a-repo)
-   - Fork the [this github project](https://github.com/aberner/iac-azure-terraform-example/)
+   - Fork the [this github project](https://github.com/philipnadm/iac-azure-terraform-example/)
 
 
 **Result:**
@@ -42,8 +42,8 @@ app_name = "<insert_your_unique_name"
 
 ---
 
-### Step 4: Open project in VS Code
-  - Simply use the build-in function in Github Desktop
+### Step 4: Open project in VS Code or other IDE
+  - Tip: use the built-in function in Github Desktop
 
 ---
 
