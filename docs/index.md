@@ -24,3 +24,4 @@ This example will learn you the basics of Github, Terraform and how to setup res
 - [Terraform Example 1](Terraform_example_1.md)
 - [Terraform Example 2](Terraform_example_2.md)
 - [Github collaboration](Github_part_2.md)
+- [Azure CloudShell](Azure_cloudshell.md)
